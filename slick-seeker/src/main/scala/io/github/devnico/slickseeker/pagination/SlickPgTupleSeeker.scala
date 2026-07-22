@@ -125,12 +125,12 @@ final case class SlickPgTupleSeeker[E, U, CVE, C, CU, D <: Ordering.Direction](
         val reversedCursors = itemsWithCursor.reverse
 
         val nextCursor = // Actually prev because reversed
-          if (rawCursor.isDefined && reversedCursors.nonEmpty)
+          if (hasMore && reversedCursors.nonEmpty)
             Some(cursorEnvironment.encode(encodeCursor(reversedCursors.head), CursorDirection.Backward))
           else None
 
         val prevCursor = // Actually next because reversed
-          if (hasMore && reversedCursors.nonEmpty)
+          if (rawCursor.isDefined && reversedCursors.nonEmpty)
             Some(cursorEnvironment.encode(encodeCursor(reversedCursors.last), CursorDirection.Forward))
           else None
 

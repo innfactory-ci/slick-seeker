@@ -193,6 +193,28 @@ class PgTupleSeekerSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll
       back1.items.map(_.firstName) shouldBe Seq("Alice", "Bob", "Charlie")
     }
 
+    "return the same cursors when reaching a page backward as when requesting it directly (issue #6)" in {
+      val seeker = persons.toPgTupleSeekerAsc
+        .seek(_.id)
+
+      // Step 1: request page 1 directly
+      val page1 = await(db.run(seeker.pageWithoutCount(limit = 2, cursor = None)))
+      page1.items.map(_.id) shouldBe Seq(1, 2)
+      page1.nextCursor shouldBe defined
+      page1.prevCursor shouldBe None
+
+      // Step 2: page forward to page 2
+      val page2 = await(db.run(seeker.pageWithoutCount(limit = 2, cursor = page1.nextCursor)))
+      page2.items.map(_.id) shouldBe Seq(3, 4)
+      page2.prevCursor shouldBe defined
+
+      // Step 3: navigate backward from page 2 -> must reproduce page 1 exactly, cursors included
+      val back1 = await(db.run(seeker.pageWithoutCount(limit = 2, cursor = page2.prevCursor)))
+      back1.items.map(_.id) shouldBe Seq(1, 2)
+      back1.nextCursor shouldBe page1.nextCursor
+      back1.prevCursor shouldBe page1.prevCursor
+    }
+
     "return same items as page()" in {
       val seeker = persons.toPgTupleSeekerAsc
         .seek(_.firstName)
